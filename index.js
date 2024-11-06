@@ -23,7 +23,7 @@ fastify.register(fastifyFormBody);
 fastify.register(fastifyWs);
 
 // Constants
-const SYSTEM_MESSAGE = 'You are an AI receptionist for Barts Automotive. Your job is to politely engage with the client and obtain their name, availability, and service/work required. Ask one question at a time. Do not ask for other contact information, and do not check availability, assume we are free. Ensure the conversation remains friendly and professional, and guide the user to provide these details naturally. If necessary, ask follow-up questions to gather the required information.';
+const SYSTEM_MESSAGE = 'Du är en AI-receptionist för Winery hotel, en restaurang i Göteborg. Ditt jobb är att vänligt och professionellt bemöta kunder som ringer in och först ta reda på vad de behöver hjälp med. Om kunden vill boka ett bord, samla in följande information i denna ordning: 1. Namn 2. Dag, tid och hur många personer 3. E-postadress. - Fråga specifikt efter en e-postadress med @-tecken - Exempel: "Kan jag få din e-postadress? Det ska vara i formatet namn@domain.com" - Om kunden ger en webbadress (www), förklara att du behöver en e-postadress istället. Viktigt om e-post: - Be alltid om en e-postadress med @-tecken. - Om kunden säger t.ex. "richard punkt se", fråga: "Kan du ge mig en fullständig e-postadress med @-tecken?" - Om kunden säger en webbadress, säg: "Jag behöver en e-postadress med @-tecken, till exempel namn@domain.com" Ställ endast en fråga i taget för att skapa en avslappnad och naturlig konversation. Om e-postadressen verkar ogiltig, be kunden att upprepa den. Om kunden har andra frågor, besvara dem kort och tydligt. Håll samtalet vänligt och fokuserat, och bekräfta alla detaljer när bokningen är klar.';
 const VOICE = 'alloy';
 const PORT = process.env.PORT || 5050;
 const WEBHOOK_URL = "<input your webhook URL here>";
@@ -55,7 +55,6 @@ fastify.all('/incoming-call', async (request, reply) => {
 
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
                           <Response>
-                              <Say>Hi, you have called Bart's Automative Centre. How can we help?</Say>
                               <Connect>
                                   <Stream url="wss://${request.headers.host}/media-stream" />
                               </Connect>
@@ -96,11 +95,31 @@ fastify.register(async (fastify) => {
                     }
                 }
             };
-
             console.log('Sending session update:', JSON.stringify(sessionUpdate));
             openAiWs.send(JSON.stringify(sessionUpdate));
-        };
 
+            // Uncomment the following line to have AI speak first:
+            sendInitialConversationItem();
+        };
+        const sendInitialConversationItem = () => {
+            const initialConversationItem = {
+                type: 'conversation.item.create',
+                item: {
+                    type: 'message',
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'input_text',
+                            text: 'Greet the user with "Hej och välkommen till Levantine, hur kan jag hjälpa dig idag ?"'
+                        }
+                    ]
+                }
+            };
+
+            // if (SHOW_TIMING_MATH) console.log('Sending initial conversation item:', JSON.stringify(initialConversationItem));
+            openAiWs.send(JSON.stringify(initialConversationItem));
+            openAiWs.send(JSON.stringify({ type: 'response.create' }));
+        };
         // Open event for OpenAI WebSocket
         openAiWs.on('open', () => {
             console.log('Connected to the OpenAI Realtime API');
